@@ -5,6 +5,10 @@ metadata:
   labels:
     app: simple-api
 spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 50%
   replicas: 1
   selector:
     matchLabels:
