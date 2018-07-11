@@ -1,0 +1,49 @@
+substitutions:
+  _API_REPO_NAME: simple-api
+  _FRONTEND_REPO_NAME: simple-frontend
+steps:
+- id: pull-image-api
+  name: gcr.io/cloud-builders/docker
+  entrypoint: "/bin/sh"
+  args: ["-c", "docker pull asia.gcr.io/$PROJECT_ID/$_API_REPO_NAME:$BRANCH_NAME || true"]
+  waitFor: ["-"]
+- id: build-image-api
+  name: gcr.io/cloud-builders/docker
+  args: [
+    "build",
+    "--cache-from", "asia.gcr.io/$PROJECT_ID/$_API_REPO_NAME:$BRANCH_NAME",
+    "--label", "git.commit=$SHORT_SHA",
+    "--label", "git.branch=$BRANCH_NAME",
+    "--label", "ci.via=google-container-builder",
+    "--label", "ci.build-id=$BUILD_ID",
+    "-t", "asia.gcr.io/$PROJECT_ID/$_API_REPO_NAME:$BRANCH_NAME",
+    "-t", "asia.gcr.io/$PROJECT_ID/$_API_REPO_NAME:$SHORT_SHA",
+    "simple-api/"
+  ]
+  waitFor: [
+    "pull-image-api",
+  ]
+- id: pull-image-frontend
+  name: gcr.io/cloud-builders/docker
+  entrypoint: "/bin/sh"
+  args: ["-c", "docker pull asia.gcr.io/$PROJECT_ID/$_FRONTEND_REPO_NAME:$BRANCH_NAME || true"]
+  waitFor: ["-"]
+- id: build-image-frontend
+  name: gcr.io/cloud-builders/docker
+  args: [
+    "build",
+    "--cache-from", "asia.gcr.io/$PROJECT_ID/$_FRONTEND_REPO_NAME:$BRANCH_NAME",
+    "--label", "git.commit=$SHORT_SHA",
+    "--label", "git.branch=$BRANCH_NAME",
+    "--label", "ci.via=google-container-builder",
+    "--label", "ci.build-id=$BUILD_ID",
+    "-t", "asia.gcr.io/$PROJECT_ID/$_FRONTEND_REPO_NAME:$BRANCH_NAME",
+    "-t", "asia.gcr.io/$PROJECT_ID/$_FRONTEND_REPO_NAME:$SHORT_SHA",
+    "simple-frontend/"
+  ]
+  waitFor: [
+    "pull-image-frontend",
+  ]
+images:
+- asia.gcr.io/$PROJECT_ID/$_API_REPO_NAME:$SHORT_SHA
+- asia.gcr.io/$PROJECT_ID/$_FRONTEND_REPO_NAME:$SHORT_SHA
