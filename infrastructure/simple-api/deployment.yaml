@@ -1,0 +1,84 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: simple-api
+  labels:
+    app: simple-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: simple-api
+  template:
+    metadata:
+      labels:
+        app: simple-api
+    spec:
+      containers:
+      - name: simple-api
+        image: asia.gcr.io/simple-project-198818/simple-api:4fc4199
+        command: ["uwsgi", "--ini", "config/uwsgi.ini", "--single-interpreter", "--enable-threads", "--http", ":8000"]
+        envFrom:
+        - configMapRef:
+            name: simple-api
+        ports:
+        - containerPort: 8000
+        livenessProbe:
+          exec:
+            command: ["curl", "-fsS", "-m", "0.1", "-H", "User-Agent: KubernetesHealthCheck/1.0", "http://127.0.0.1:8000/health"]
+          initialDelaySeconds: 5
+          periodSeconds: 1
+          successThreshold: 1
+          failureThreshold: 5
+        readinessProbe:
+          exec:
+            command: ["curl", "-fsS", "-m", "0.1", "-H", "User-Agent: KubernetesHealthCheck/1.0", "http://127.0.0.1:8000/health"]
+          initialDelaySeconds: 3
+          periodSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1G
+          limits:
+            cpu: 1000m
+            memory: 1G
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: simple-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: simple-worker
+  template:
+    metadata:
+      labels:
+        app: simple-worker
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+      - name: simple-worker
+        image: asia.gcr.io/simple-project-198818/simple-api:4fc4199
+        command: ["celery", "-A", "app:celery", "worker", "--without-gossip", "-Ofair", "-l", "info"]
+        envFrom:
+        - configMapRef:
+            name: simple-api
+        readinessProbe:
+          exec:
+            command: ["sh", "-c", "celery inspect -q -A app:celery -d celery@$(hostname) --timeout 10 ping"]
+          initialDelaySeconds: 15
+          periodSeconds: 15
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1G
+          limits:
+            cpu: 1000m
+            memory: 1G

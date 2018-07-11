@@ -1,0 +1,16 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: redis-broker
+data:
+  redis.conf: |-
+    maxmemory-policy volatile-lru
+    appendonly yes
+    aof-use-rdb-preamble yes
+    auto-aof-rewrite-percentage 50
+    auto-aof-rewrite-min-size 64mb
+    client-output-buffer-limit pubsub 64mb 32mb 60
+    lazyfree-lazy-eviction yes
+    lazyfree-lazy-expire yes
+    lazyfree-lazy-server-del yes
+    slave-lazy-flush yes

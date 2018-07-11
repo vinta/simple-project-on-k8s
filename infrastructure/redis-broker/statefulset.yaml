@@ -1,0 +1,64 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: redis-broker
+spec:
+  replicas: 1
+  serviceName: redis-broker
+  selector:
+    matchLabels:
+      app: redis-broker
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: ssd
+      resources:
+        requests:
+          storage: 32Gi
+  template:
+    metadata:
+      labels:
+        app: redis-broker
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud.google.com/gke-preemptible
+                operator: NotIn
+                values:
+                - "true"
+      volumes:
+      - name: config
+        configMap:
+          name: redis-broker
+      containers:
+      - name: redis
+        image: redis:4.0.10-alpine
+        command: ["redis-server"]
+        args: ["/etc/redis/redis.conf", "--loglevel", "verbose", "--maxmemory", "1g"]
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: config
+          mountPath: /etc/redis
+        readinessProbe:
+          exec:
+            command: ["sh", "-c", "redis-cli -h $(hostname) ping"]
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+          periodSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 250m
+            memory: 1G
+          limits:
+            cpu: 1000m
+            memory: 1G

@@ -1,0 +1,91 @@
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: default-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: default
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: mongodb-rs0
+spec:
+  replicas: 3
+  updateStrategy:
+    type: RollingUpdate
+  serviceName: mongodb-rs0
+  selector:
+    matchLabels:
+      app: mongodb-rs0
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: ssd-xfs
+      resources:
+        requests:
+          storage: 100G
+  template:
+    metadata:
+      labels:
+        app: mongodb-rs0
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: custom.kubernetes.io/fs-type
+                operator: In
+                values:
+                - "xfs"
+              - key: cloud.google.com/gke-preemptible
+                operator: NotIn
+                values:
+                - "true"
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: "kubernetes.io/hostname"
+              labelSelector:
+                matchExpressions:
+                  - key: "app"
+                    operator: In
+                    values:
+                    - mongodb-rs0
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: db
+        image: mongo:3.6.5
+        command: ["mongod"]
+        args: ["--bind_ip_all", "--replSet", "rs0"]
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: data
+          mountPath: /data/db
+        readinessProbe:
+          exec:
+            command: ["mongo", --eval, "db.adminCommand('ping')"]
+        resources:
+          requests:
+            cpu: 2
+            memory: 4G
+          limits:
+            cpu: 4
+            memory: 4G
+      - name: sidecar
+        image: cvallance/mongo-k8s-sidecar
+        env:
+          - name: MONGO_SIDECAR_POD_LABELS
+            value: app=mongodb-rs0
+          - name: KUBE_NAMESPACE
+            value: default
+          - name: KUBERNETES_MONGO_SERVICE_NAME
+            value: mongodb-rs0

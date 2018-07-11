@@ -1,0 +1,40 @@
+kind: Ingress
+apiVersion: extensions/v1beta1
+metadata:
+  name: simple-project
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/tls-acme: "true"
+    # ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  # tls:
+  # - secretName: kittenphile-com-tls
+  #   hosts:
+  #   - kittenphile.com
+  #   - www.kittenphile.com
+  #   - api.kittenphile.com
+  rules:
+  - host: kittenphile.com
+    http:
+      paths:
+      - path: /*
+        backend:
+          serviceName: simple-frontend
+          servicePort: 80
+  - host: www.kittenphile.com
+    http:
+      paths:
+      - path: /*
+        backend:
+          serviceName: simple-frontend
+          servicePort: 80
+  - host: api.kittenphile.com
+    http:
+      paths:
+      - path: /*
+        backend:
+          serviceName: simple-api
+          servicePort: 80
+  backend:
+    serviceName: simple-api
+    servicePort: 80

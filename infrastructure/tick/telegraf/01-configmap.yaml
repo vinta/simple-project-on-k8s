@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: tick
+  name: telegraf-ds
+data:
+  telegraf.conf: |+
+    [agent]
+      interval = "10s"
+      round_interval = true
+      metric_batch_size = 1000
+      metric_buffer_limit = 10000
+      collection_jitter = "0s"
+      flush_interval = "10s"
+      flush_jitter = "0s"
+      precision = ""
+      debug = true
+      quiet = false
+      logfile = ""
+      hostname = "$HOSTNAME"
+      omit_hostname = false
+    [[outputs.influxdb]]
+      urls = ["http://influxdb.tick.svc.cluster.local:8086"]
+      database = "nodes"
+      retention_policy = "rp_90d"
+      write_consistency = "any"
+      timeout = "5s"
+      username = ""
+      password = ""
+      user_agent = "telegraf"
+      insecure_skip_verify = false
+    [[inputs.cpu]]
+      percpu = true
+      totalcpu = true
+      collect_cpu_time = false
+    [[inputs.disk]]
+      ignore_fs = ["tmpfs", "devtmpfs"]
+    [[inputs.diskio]]
+    [[inputs.docker]]
+      endpoint = "unix:///var/run/docker.sock"
+      container_names = []
+      timeout = "5s"
+      perdevice = true
+      total = false
+    [[inputs.kernel]]
+    [[inputs.kubernetes]]
+      url = "http://$HOSTNAME:10255"
+      bearer_token = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+      insecure_skip_verify = true
+    [[inputs.mem]]
+    [[inputs.processes]]
+    [[inputs.swap]]
+    [[inputs.system]]

@@ -1,0 +1,73 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  namespace: tick
+  name: influxdb
+spec:
+  replicas: 1
+  serviceName: influxdb
+  selector:
+    matchLabels:
+      app: influxdb
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: ssd # InfluxDB suggests using SSD
+      resources:
+        requests:
+          storage: 100G
+  template:
+    metadata:
+      labels:
+        app: influxdb
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud.google.com/gke-preemptible
+                operator: NotIn
+                values:
+                - "true"
+      volumes:
+      - name: config
+        configMap:
+          name: influxdb
+          items:
+            - key: influxdb.conf
+              path: influxdb.conf
+      - name: init-iql
+        configMap:
+          name: influxdb
+          items:
+            - key: init.iql
+              path: init.iql
+      containers:
+      - name: influxdb
+        image: influxdb:1.6-alpine
+        ports:
+        - containerPort: 8086
+        - containerPort: 8083
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/influxdb
+        - name: config
+          mountPath: /etc/influxdb
+        - name: init-iql
+          mountPath: /docker-entrypoint-initdb.d
+        resources: # https://docs.influxdata.com/influxdb/v1.5/guides/hardware_sizing/
+          requests:
+            cpu: 800m
+            memory: 2G
+          limits:
+            cpu: 4000m
+            memory: 2G
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: 8086
+          initialDelaySeconds: 5
+          timeoutSeconds: 5

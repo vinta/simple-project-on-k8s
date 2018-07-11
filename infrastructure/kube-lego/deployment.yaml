@@ -1,0 +1,62 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: kube-lego
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: kube-lego
+  namespace: kube-lego
+data:
+  LEGO.EMAIL: "vinta.chen@gmail.com"
+  LEGO.URL: "https://acme-v01.api.letsencrypt.org/directory"
+  # LEGO.URL: "https://acme-staging.api.letsencrypt.org/directory"
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: kube-lego
+  namespace: kube-lego
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-lego
+  template:
+    metadata:
+      labels:
+        app: kube-lego
+    spec:
+      containers:
+      - name: kube-lego
+        image: jetstack/kube-lego:0.1.5
+        ports:
+        - containerPort: 8080
+        env:
+        - name: LEGO_LOG_LEVEL
+          value: debug
+        - name: LEGO_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              name: kube-lego
+              key: LEGO.EMAIL
+        - name: LEGO_URL
+          valueFrom:
+            configMapKeyRef:
+              name: kube-lego
+              key: LEGO.URL
+        - name: LEGO_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: LEGO_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          timeoutSeconds: 1

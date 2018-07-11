@@ -1,0 +1,9 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: redis-cache
+data:
+  redis.conf: |-
+    maxmemory-policy allkeys-lfu
+    appendonly no
+    save ""

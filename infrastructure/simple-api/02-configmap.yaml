@@ -1,0 +1,10 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: simple-api
+data:
+  FLASK_ENV: production
+  MONGODB_URL: mongodb://mongodb-rs0-0.mongodb-rs0.default.svc.cluster.local,mongodb-rs0-1.mongodb-rs0.default.svc.cluster.local,mongodb-rs0-3.mongodb-rs0.default.svc.cluster.local/demo?readPreference=secondaryPreferred&maxPoolSize=10
+  CACHE_URL: redis://redis-cache.default.svc.cluster.local/0
+  CELERY_BROKER_URL: redis://redis-broker.default.svc.cluster.local/0
+  CELERY_RESULT_BACKEND: redis://redis-broker.default.svc.cluster.local/1

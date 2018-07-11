@@ -1,0 +1,10 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: redis-cache
+spec:
+  selector:
+    app: redis-cache
+  ports:
+  - port: 6379
+    targetPort: 6379

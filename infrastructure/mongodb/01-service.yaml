@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-rs0
+spec:
+  clusterIP: None
+  selector:
+    app: mongodb-rs0
+  ports:
+    - port: 27017
+      targetPort: 27017
