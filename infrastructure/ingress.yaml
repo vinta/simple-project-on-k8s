@@ -35,6 +35,13 @@ spec:
         backend:
           serviceName: simple-api
           servicePort: 80
+  - host: asia.contents.kittenphile.com
+    http:
+      paths:
+      - path: /*
+        backend:
+          serviceName: gcs-proxy-asia-contents-kittenphile-com
+          servicePort: 80
   backend:
     serviceName: simple-api
     servicePort: 80

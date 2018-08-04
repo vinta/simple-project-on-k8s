@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gcs-proxy-asia-contents-kittenphile-com
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gcs-proxy-asia-contents-kittenphile-com
+  template:
+    metadata:
+      labels:
+        app: gcs-proxy-asia-contents-kittenphile-com
+    spec:
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: google-cloud-storage-proxy
+      containers:
+      - name: http
+        image: swaglive/openresty:gcsfuse
+        imagePullPolicy: Always
+        args: ["nginx", "-c", "/usr/local/openresty/nginx/conf/nginx.conf", "-g", "daemon off;"]
+        ports:
+        - containerPort: 80
+        securityContext:
+          privileged: true
+          capabilities:
+            add: ["CAP_SYS_ADMIN"]
+        env:
+          - name: GCSFUSE_OPTIONS
+            value: "--debug_gcs --implicit-dirs --stat-cache-ttl 1s --type-cache-ttl 24h --limit-bytes-per-sec -1 --limit-ops-per-sec -1 -o ro,allow_other"
+          - name: GOOGLE_CLOUD_STORAGE_BUCKET
+            value: asia.contents.kittenphile.com
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /usr/local/openresty/nginx/conf/nginx.conf
+          subPath: nginx.conf
+          readOnly: true
+        readinessProbe:
+          httpGet:
+            port: 80
+            path: /
+            httpHeaders:
+            - name: User-Agent
+              value: "KubernetesHealthCheck/1.0"
+          timeoutSeconds: 1
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 1
+          successThreshold: 1
+        resources:
+          requests:
+            cpu: 0m
+            memory: 500Mi
+          limits:
+            cpu: 1000m
+            memory: 500Mi

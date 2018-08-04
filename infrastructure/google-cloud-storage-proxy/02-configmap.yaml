@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: google-cloud-storage-proxy
+data:
+  nginx.conf: |-
+    worker_processes auto;
+
+    events {
+        worker_connections 4096;
+        use epoll;
+        multi_accept on;
+        accept_mutex off;
+    }
+
+    http {
+      include mime.types;
+      default_type application/octet-stream;
+
+      # access_log off;
+      sendfile on;
+      tcp_nopush on;
+      tcp_nodelay on;
+      aio threads;
+
+      client_max_body_size 10M;
+      keepalive_timeout 650;
+
+      gzip on;
+      gzip_disable "msie6";
+      gzip_min_length 128;
+      gzip_vary on;
+      gzip_proxied any;
+      gzip_comp_level 6;
+      gzip_buffers 16 8k;
+      gzip_types text/css
+                 text/plain
+                 text/javascript
+                 application/javascript
+                 application/json
+                 application/x-javascript
+                 application/xml
+                 application/xml+rss
+                 application/xhtml+xml
+                 application/x-font-ttf
+                 application/x-font-opentype
+                 application/vnd.ms-fontobject
+                 image/svg+xml
+                 image/x-icon
+                 application/rss+xml
+                 application/atom_xml;
+
+      server {
+        listen 80;
+
+        if ( $http_user_agent ~* (GoogleHC|KubernetesHealthCheck) ) {
+          return 200;
+        }
+
+        # if ( $http_x_forwarded_proto != 'https' ) {
+        #   return 301 https://$host$request_uri;
+        # }
+
+        if ( $request_method !~ "GET|HEAD" ) {
+            return 405;
+        }
+
+        header_filter_by_lua_block {
+          ngx.header["Server"] = nil;
+        }
+
+        root /usr/share/nginx/html;
+        open_file_cache max=10000 inactive=10m;
+        open_file_cache_valid 1m;
+        open_file_cache_min_uses 1;
+        open_file_cache_errors on;
+
+        location = / {
+          try_files /index.html =404;
+          # access_log logs/access.log;
+
+          # NOTE: nginx adds double Cache-Control headers with expires
+          add_header "Cache-Control" "public, max-age=600";
+        }
+
+        location / {
+          # access_log logs/access.log;
+
+          # NOTE: nginx adds double Cache-Control headers with expires
+          add_header "Cache-Control" "public, max-age=600";
+        }
+
+        include /etc/nginx/conf.d/*.conf;
+      }
+    }
