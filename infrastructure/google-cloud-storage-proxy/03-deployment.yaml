@@ -16,6 +16,36 @@ spec:
       - name: nginx-config
         configMap:
           name: google-cloud-storage-proxy
+      - name: nginx-config-extra
+        emptyDir: {}
+      initContainers:
+      - name: create-robots-txt
+        image: busybox
+        command: ["sh", "-c"]
+        args:
+        - |
+            set -euo pipefail
+            cat << 'EOF' > /etc/nginx/conf.d/robots.txt
+            User-agent: *
+            Disallow: /
+            EOF
+        volumeMounts:
+        - name: nginx-config-extra
+          mountPath: /etc/nginx/conf.d/
+      - name: create-nginx-extra-conf
+        image: busybox
+        command: ["sh", "-c"]
+        args:
+        - |
+            set -euo pipefail
+            cat << 'EOF' > /etc/nginx/conf.d/extra.conf
+            location /robots.txt {
+              alias /etc/nginx/conf.d/robots.txt;
+            }
+            EOF
+        volumeMounts:
+        - name: nginx-config-extra
+          mountPath: /etc/nginx/conf.d/
       containers:
       - name: http
         image: swaglive/openresty:gcsfuse
@@ -36,6 +66,9 @@ spec:
         - name: nginx-config
           mountPath: /usr/local/openresty/nginx/conf/nginx.conf
           subPath: nginx.conf
+          readOnly: true
+        - name: nginx-config-extra
+          mountPath: /etc/nginx/conf.d/
           readOnly: true
         readinessProbe:
           httpGet:
