@@ -1,0 +1,62 @@
+kind: CronJob
+apiVersion: batch/v1beta1
+metadata:
+  name: backup-mongodb-rs0
+spec:
+  suspend: false
+  schedule: "30 * * * *"
+  startingDeadlineSeconds: 600
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: custom.kubernetes.io/scopes-storage-full
+                    operator: In
+                    values:
+                    - "true"
+          volumes:
+          - name: backups-dir
+            emptyDir: {}
+          initContainers:
+          - name: clean
+            image: busybox
+            command: ["rm", "-rf", "/backups/*"]
+            volumeMounts:
+            - name: backups-dir
+              mountPath: /backups
+          - name: backup
+            image: vinta/mongodb-tools:4.0.1
+            workingDir: /backups
+            command: ["sh", "-c"]
+            args:
+            - mongodump --host=$MONGODB_URL --readPreference=secondaryPreferred --oplog --gzip --archive=$(date +%Y-%m-%dT%H-%M-%S).tar.gz
+            env:
+            - name: MONGODB_URL
+              value: mongodb-rs0-0.mongodb-rs0.default.svc.cluster.local,mongodb-rs0-1.mongodb-rs0.default.svc.cluster.local,mongodb-rs0-3.mongodb-rs0.default.svc.cluster.local
+            volumeMounts:
+            - name: backups-dir
+              mountPath: /backups
+            resources:
+              requests:
+                cpu: 2
+                memory: 2G
+          containers:
+          - name: upload
+            image: google/cloud-sdk:alpine
+            workingDir: /backups
+            command: ["sh", "-c"]
+            args:
+            - gsutil -m cp -r . gs://$(GOOGLE_CLOUD_STORAGE_BUCKET)
+            env:
+            - name: GOOGLE_CLOUD_STORAGE_BUCKET
+              value: simple-project-backups
+            volumeMounts:
+            - name: backups-dir
+              mountPath: /backups
+              readOnly: true
