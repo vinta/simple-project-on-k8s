@@ -1,13 +1,25 @@
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
-  name: host-configurer
+  name: xfs-host-configurer
 spec:
+  selector:
+    matchLabels:
+      app: xfs-host-configurer
   template:
     metadata:
       labels:
-        app: host-configurer
+        app: xfs-host-configurer
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: custom.kubernetes.io/fs-type
+                operator: In
+                values:
+                - "xfs"
       hostPID: true
       containers:
       - name: configurer
