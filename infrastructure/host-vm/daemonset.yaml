@@ -12,6 +12,7 @@ spec:
       containers:
       - name: configurer
         image: gcr.io/google-containers/startup-script:v1
+        imagePullPolicy: Always
         securityContext:
           privileged: true
         env:
@@ -22,11 +23,8 @@ spec:
             set -o pipefail
             set -o nounset
 
-            # disable hugepages
             echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled
             echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag
-
-            echo 256 > /proc/sys/net/core/somaxconn
         resources:
           requests:
             cpu: 10m
