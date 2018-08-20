@@ -1,0 +1,33 @@
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: host-configurer
+spec:
+  template:
+    metadata:
+      labels:
+        app: host-configurer
+    spec:
+      hostPID: true
+      containers:
+      - name: configurer
+        image: gcr.io/google-containers/startup-script:v1
+        securityContext:
+          privileged: true
+        env:
+        - name: STARTUP_SCRIPT
+          value: |
+            #! /bin/bash
+            set -o errexit
+            set -o pipefail
+            set -o nounset
+
+            # disable hugepages
+            echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled
+            echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag
+
+            echo 256 > /proc/sys/net/core/somaxconn
+        resources:
+          requests:
+            cpu: 10m
+            memory: 30Mi
