@@ -24,7 +24,7 @@ RUN pip install --user -r requirements.txt && \
 FROM python:3.6.5-alpine3.7
 
 ENV PATH=$PATH:/root/.local/bin
-ENV FLASK_ENV=development
+ENV FLASK_ENV=production
 ENV FLASK_APP=app.py
 
 WORKDIR /usr/src/app/
@@ -40,4 +40,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["flask", "run", "-h", "0.0.0.0", "-p", "8000"]
+CMD ["uwsgi", "--ini", "config/uwsgi.ini", "--single-interpreter", "--enable-threads", "--http", ":8000"]
